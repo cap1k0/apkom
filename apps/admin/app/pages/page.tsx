@@ -10,7 +10,14 @@ export default async function PagesAdmin() {
       <h1 className="text-xl font-semibold">Privacy & Terms</h1>
 
       {pages?.map((p) => (
-        <form key={p.slug} action={savePage} className="space-y-3 border-b pb-8">
+        <form
+          key={p.slug}
+          action={async (formData: FormData) => {
+            'use server'
+            await savePage(formData)
+          }}
+          className="space-y-3 border-b pb-8"
+        >
           <input type="hidden" name="slug" value={p.slug} />
           <h2 className="font-medium text-sm text-gray-500">{p.slug}</h2>
           <input
