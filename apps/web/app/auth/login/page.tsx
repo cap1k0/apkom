@@ -1,19 +1,45 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Script from 'next/script'
 import { requestMagicLink, signInWithPassword } from '@/lib/auth/actions'
+
+const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
 
 export default function LoginPage() {
   const [mode, setMode] = useState<'magic' | 'password'>('magic')
   const [message, setMessage] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState('')
+  const [scriptReady, setScriptReady] = useState(false)
+  const widgetRef = useRef<HTMLDivElement>(null)
+  const widgetIdRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!scriptReady || !SITE_KEY || !widgetRef.current) return
+    const turnstile = (window as any).turnstile
+    if (!turnstile) return
+
+    if (widgetIdRef.current) return
+
+    widgetIdRef.current = turnstile.render(widgetRef.current, {
+      sitekey: SITE_KEY,
+      callback: (token: string) => setTurnstileToken(token),
+      'expired-callback': () => setTurnstileToken(''),
+    })
+  }, [scriptReady])
 
   async function handleMagicLink(formData: FormData) {
     setLoading(true)
     setMessage(null)
-    const token = (window as any).turnstile?.getResponse()
-    formData.set('turnstileToken', token ?? '')
+
+    if (SITE_KEY && !turnstileToken) {
+      setLoading(false)
+      setMessage('Please complete the captcha.')
+      return
+    }
+
+    formData.set('turnstileToken', turnstileToken)
     const result = await requestMagicLink(formData)
     setLoading(false)
     if (result?.error) setMessage(result.error)
@@ -30,7 +56,14 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />
+      {SITE_KEY && (
+        <Script
+          src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+          async
+          defer
+          onLoad={() => setScriptReady(true)}
+        />
+      )}
 
       <div className="w-full max-w-sm bg-white rounded-xl shadow p-8">
         <h1 className="text-xl font-semibold mb-6 text-center">Sign in</h1>
@@ -63,7 +96,13 @@ export default function LoginPage() {
               placeholder="you@example.com"
               className="w-full border rounded-lg px-3 py-2 text-sm"
             />
-            <div className="cf-turnstile" data-sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY} />
+            {SITE_KEY ? (
+              <div ref={widgetRef} />
+            ) : (
+              <p className="text-xs text-amber-600">
+                Captcha not configured (NEXT_PUBLIC_TURNSTILE_SITE_KEY missing) — skipping for now.
+              </p>
+            )}
             <button
               type="submit"
               disabled={loading}
