@@ -1,0 +1,10 @@
+{
+  "name": "@my-workspace/shared-supabase",
+  "version": "0.0.1",
+  "private": true,
+  "main": "src/index.ts",
+  "dependencies": {
+    "@supabase/ssr": "^0.7.0",
+    "@supabase/supabase-js": "^2.45.0"
+  }
+}
