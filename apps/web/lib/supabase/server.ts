@@ -1,1 +1,1 @@
-export { createServerSupabaseClient as createClient } from '@my-workspace/shared-supabase'
+export { createClient } from '@my-workspace/shared-supabase/server'
